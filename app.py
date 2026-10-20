@@ -16,7 +16,7 @@ app = Flask(__name__)
 #    XAMPP trae el usuario "root" con contraseña vacía (root:@).
 #    Si tu MySQL tiene contraseña, escríbela después de "root:".
 # -------------------------------------------------------------
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:renovacionSQL59@localhost:3306/calidashboard_db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:amesame13!@localhost:3306/calidashboard_db"
 
 db = SQLAlchemy(app)
 
