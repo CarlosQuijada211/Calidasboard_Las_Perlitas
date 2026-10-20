@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block contenido %}
+<h1>{{ titulo }}</h1>
+
+{% if lecturas and lecturas.TotalLecturas > 0 %}
+<div class="tabla-scroll">
+<table>
+  <thead>
+    <tr>
+      <th>Total de Lecturas</th>
+      <th>pH promedio</th>
+      <th>TDS promedio</th>
+      <th>Lecturas que Cumplen</th>
+      <th>% Cumplimiento</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>{{ lecturas.TotalLecturas }}</td>
+      <td>{{ lecturas.pHPromedio }}</td>
+      <td>{{ lecturas.TDSPromedio }}</td>
+      <td>{{ lecturas.LecturasCumplen }}</td>
+      <td>{{ lecturas.Porcentaje }}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="vacio">No hay lecturas para mostrar.</p>
+{% endif %}
+{% endblock %}

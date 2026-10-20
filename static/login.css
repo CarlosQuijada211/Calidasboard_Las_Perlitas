@@ -1,0 +1,49 @@
+/* Calidashboard · estilos de la página de login
+   Usa los mismos colores, bordes y tipografía del sistema. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f6f8fb; color: #12151c;
+       min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Barra superior (igual que el resto del sistema) */
+.barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+         background: #0A66FF; color: #fff; padding: 14px 28px; }
+.marca { font-weight: bold; font-size: 18px; }
+.marca span { font-weight: normal; font-size: 13px; opacity: .8; margin-left: 6px; }
+
+/* Contenedor centrado */
+.login-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 20px; }
+
+/* Tarjeta */
+.tarjeta-login { width: 100%; max-width: 400px; background: #fff; border: 1px solid #e4e8f0;
+                 border-radius: 12px; padding: 28px; }
+h1 { margin: 0 0 6px; font-size: 24px; }
+.nota { color: #5b6472; font-size: 13px; margin: 0 0 18px; line-height: 1.5; }
+
+/* Formulario */
+.form-login { display: flex; flex-direction: column; gap: 16px; }
+.form-login label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: bold; color: #5b6472; }
+.form-login input[type="text"],
+.form-login input[type="password"] { padding: 9px 12px; border: 1.5px solid #e4e8f0; border-radius: 8px;
+                                     font-size: 14px; font-family: inherit; color: #12151c; }
+.form-login input[type="text"]:focus,
+.form-login input[type="password"]:focus { outline: none; border-color: #0A66FF; box-shadow: 0 0 0 3px rgba(10, 102, 255, .15); }
+.form-login label.check { flex-direction: row; align-items: center; gap: 8px; font-weight: normal; color: #12151c; }
+
+/* Botón */
+button { background: #0A66FF; color: #fff; border: none; border-radius: 8px; padding: 7px 14px;
+         font-weight: bold; cursor: pointer; font-size: 13px; }
+button:hover { background: #0856d6; }
+button:focus-visible { outline: 3px solid rgba(10, 102, 255, .35); outline-offset: 2px; }
+.boton-ancho { width: 100%; padding: 11px 14px; font-size: 14px; }
+
+/* Mensaje de error (mismos tonos que las filas de alerta) */
+.mensaje-error { background: #ffecec; border: 1px solid #E5484D; color: #a52a2e; border-radius: 8px;
+                 padding: 10px 12px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+.oculto { display: none; }
+
+footer { text-align: center; color: #9aa3b2; font-size: 12px; padding: 24px; }
+
+@media (max-width: 480px) {
+  .barra { padding: 14px 20px; }
+  .tarjeta-login { padding: 22px; }
+}

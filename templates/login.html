@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión · Calidashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+
+  <header class="barra">
+    <div class="marca">💧 Calidashboard <span>Agua producto</span></div>
+  </header>
+
+  <main class="login-main">
+    <section class="tarjeta-login">
+      <h1>Iniciar sesión</h1>
+      <p class="nota">Ingresa con tu usuario de técnico para registrar y revisar lecturas.</p>
+
+      <!-- Mensaje de error: quita la clase "oculto" desde tu backend cuando falle el login -->
+      <div class="mensaje-error oculto" role="alert">
+        Usuario o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.
+      </div>
+
+      <form class="form-login" method="post" action="/login">
+        <label>
+          Usuario
+          <input type="text" name="usuario" autocomplete="username" placeholder="Ej. sramirez" required autofocus>
+        </label>
+
+        <label>
+          Contraseña
+          <input type="password" name="contrasena" autocomplete="current-password" placeholder="Tu contraseña" required>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="recordar"> Mantener sesión iniciada
+        </label>
+
+        <button type="submit" class="boton-ancho">Iniciar sesión</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>Calidashboard · Sistema de práctica</footer>
+
+</body>
+</html>
