@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block head%} 
+{{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}"> 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block contenido %}
+
+<div class="dash">
+  <h1>Dashboard</h1>
+  <p class="dash-sub">{{ d.kpis.total }} lectura(s) · Límites: pH {{ d.limites.ph_min }} - {{ d.limites.ph_max }} · TDS ≤ {{ d.limites.tds_max }}</p>
+ 
+  <!-- KPIs -->
+  <section class="dash-kpis">
+    <div class="dash-card dash-kpi"><span>Lecturas</span><strong>{{ d.kpis.total }}</strong><small>de {{ d.kpis.total }} registradas</small></div>
+    <div class="dash-card dash-kpi"><span>% que cumple</span><strong>{{ d.kpis.pct_cumple }} %</strong><small>{{ d.kpis.no_cumplen }} no cumplen</small></div>
+    <div class="dash-card dash-kpi"><span>pH promedio</span><strong>{{ "%.2f"|format(d.kpis.ph_prom) }}</strong><small>rango {{ d.limites.ph_min }} – {{ d.limites.ph_max }}</small></div>
+    <div class="dash-card dash-kpi"><span>TDS promedio</span><strong>{{ d.kpis.tds_prom }}</strong><small>ppm · máx. {{ d.limites.tds_max }}</small></div>
+  </section>
+ 
+  {% if d.kpis.total == 0 %}
+    <div class="dash-card dash-vacio">Todavía no hay lecturas registradas. <a href="{{ url_for('nueva_lectura') }}">Agrega la primera</a>.</div>
+  {% else %}
+  <!-- Gráficas -->
+  <section class="dash-fila dash-graficas">
+    <div class="dash-card">
+      <h2>pH por lectura <small>· los puntos rojos están fuera de rango</small></h2>
+      <div class="dash-chart"><canvas id="chPh"></canvas></div>
+    </div>
+    <div class="dash-card">
+      <h2>Resultado por lote <small>· lecturas que cumplen y no cumplen</small></h2>
+      <div class="dash-chart"><canvas id="chLotes"></canvas></div>
+    </div>
+  </section>
+  {% endif %}
+ 
+  <!-- Tablas -->
+  <section class="dash-fila dash-tablas">
+    <div class="dash-card">
+      <h2>Estado de los lotes</h2>
+      <table class="dash-tabla">
+        <thead><tr><th>Lote</th><th>Producto</th><th>Lecturas</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for l in d.lotes_estado %}
+          <tr>
+            <td>{{ l.lote }}</td>
+            <td>{{ l.producto }}</td>
+            <td>{{ l.lecturas }}</td>
+            <td><span class="dash-pill {{ l.estado|replace(' ', '-') }}">{{ l.estado }}</span></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="dash-vacio">No hay lotes registrados.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+ 
+    <div class="dash-card">
+      <h2>Lecturas que no cumplen</h2>
+      {% if d.alertas %}
+      <table class="dash-tabla">
+        <thead><tr><th>Fecha</th><th>Lote</th><th>Técnico</th><th>Motivo</th></tr></thead>
+        <tbody>
+        {% for a in d.alertas %}
+          <tr>
+            <td>{{ a.fecha }}</td>
+            <td>{{ a.lote }}</td>
+            <td>{{ a.tecnico }}</td>
+            <td>{% for m in a.motivos %}<span class="dash-pill motivo">{{ m }}</span>{% endfor %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <a class="dash-vertodas" href="{{ url_for('ver_alertas') }}">Ver todas →</a>
+      {% else %}
+        <div class="dash-vacio">Todas las lecturas cumplen 🎉</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+ 
+{% if d.kpis.total > 0 %}
+<script id="datos-dashboard" type="application/json">{{ {"graficas": d.graficas, "limites": d.limites} | tojson }}</script>
+<script>
+const _datos = JSON.parse(document.getElementById('datos-dashboard').textContent);
+const G = _datos.graficas;
+const L = _datos.limites;
+const AZUL = '#1166ff', OK = '#00a884', BAD = '#e84a50', LIMITE = '#a9b0c9';
+ 
+Chart.defaults.maintainAspectRatio = false;
+ 
+// pH por lectura: puntos rojos fuera de rango + líneas de límite
+const phVals = G.ph.valores;
+new Chart(document.getElementById('chPh'), {
+  type: 'line',
+  data: {
+    labels: G.ph.etiquetas,
+    datasets: [
+      { label: 'pH', data: phVals, borderColor: AZUL, borderWidth: 2.5, tension: .25,
+        pointRadius: G.ph.fuera.map(f => f ? 7 : 4),
+        pointBackgroundColor: G.ph.fuera.map(f => f ? BAD : AZUL),
+        pointBorderColor: G.ph.fuera.map(f => f ? BAD : AZUL) },
+      { label: 'Límite mín. ' + L.ph_min, data: G.ph.etiquetas.map(() => L.ph_min),
+        borderColor: LIMITE, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0 },
+      { label: 'Límite máx. ' + L.ph_max, data: G.ph.etiquetas.map(() => L.ph_max),
+        borderColor: LIMITE, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0 },
+    ]
+  },
+  options: {
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: { suggestedMin: Math.floor(Math.min(...phVals, L.ph_min) - 0.5),
+           suggestedMax: Math.ceil(Math.max(...phVals, L.ph_max) + 0.5) },
+      x: { ticks: { minRotation: 60, maxRotation: 60, font: { size: 10 } }, grid: { display: false } }
+    }
+  }
+});
+ 
+// Resultado por lote: barras apiladas
+new Chart(document.getElementById('chLotes'), {
+  type: 'bar',
+  data: {
+    labels: G.lotes.etiquetas,
+    datasets: [
+      { label: 'Cumplen', data: G.lotes.cumplen, backgroundColor: OK },
+      { label: 'No cumplen', data: G.lotes.no_cumplen, backgroundColor: BAD },
+    ]
+  },
+  options: {
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      x: { stacked: true, grid: { display: false } },
+      y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+    }
+  }
+});
+</script>
+{% endif %}
+
+{% endblock %}

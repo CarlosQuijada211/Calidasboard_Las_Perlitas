@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block titulo %}Calidashboard{% endblock %} · Calidashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+  {% block head%} {% endblock %}
 </head>
 <body>
   <header class="barra">
@@ -14,6 +15,7 @@
       <a href="{{ url_for('ver_alertas') }}">Alertas</a>
       <a href="{{ url_for('resumen') }}">Resumen</a>
       <a href="{{ url_for('nueva_lectura') }}" class="boton">+ Nueva lectura</a>  
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
     </nav>
   </header>
 

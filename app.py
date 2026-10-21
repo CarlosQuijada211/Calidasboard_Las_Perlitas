@@ -8,6 +8,8 @@ from datetime import date, time
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
+from dashboard_data import obtener_registros, obtener_lotes, construir_dashboard
+
 app = Flask(__name__)
 
 # -------------------------------------------------------------
@@ -225,7 +227,6 @@ def resumen():
     return render_template("resumen.html", lecturas=Datos, titulo="Resumen de Lecturas")
 
 
-
 # Ejercicio 4: ruta /lecturas/<int:id>/eliminar  (methods=["POST"])
 @app.route("/lecturas/<int:id>/borrar", methods=["POST"])
 def borrar(id):
@@ -237,9 +238,12 @@ def borrar(id):
     # request.referrer = la página desde donde se envió el formulario
     return redirect(request.referrer or url_for("listar_lecturas"))
 
-
-# Ejercicio 5 (reto): modelo Lote + ruta /lotes
-#   Estado de cada lote: "Liberado" o "Retenido".
+@app.route("/dashboard")
+def dashboard():
+    registros = obtener_registros(Lectura, Lote)
+    lotes = obtener_lotes(Lote)
+    datos = construir_dashboard(registros, lotes, PH_MIN, PH_MAX, TDS_MAX)
+    return render_template("dashboard.html", d=datos, titulo="Dashboard")
 
 
 # -------------------------------------------------------------
