@@ -5,13 +5,13 @@
 # =============================================================
 from datetime import date, time
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 
 from dashboard_data import obtener_registros, obtener_lotes, construir_dashboard
 
 app = Flask(__name__)
-
+app.secret_key = "esto-seria-mejor-guardarlo-en-una-variable-de-entorno"
 # -------------------------------------------------------------
 # 1. CONEXIÓN A LA BASE DE DATOS
 #    Formato: mysql+pymysql://USUARIO:CONTRASEÑA@SERVIDOR:PUERTO/BASE
@@ -244,6 +244,38 @@ def dashboard():
     lotes = obtener_lotes(Lote)
     datos = construir_dashboard(registros, lotes, PH_MIN, PH_MAX, TDS_MAX)
     return render_template("dashboard.html", d=datos, titulo="Dashboard")
+
+@app.route("/lecturas/<int:id>/editar", methods=["GET", "POST"])
+def editar(id):
+    lectura = Lectura.query.get_or_404(id)
+
+    if request.method == "POST":
+        f = request.form
+
+        # Igual que en nueva_lectura: si el lote no existe, se crea
+        numero_lote = f["lote"].strip()
+        lote_obj = Lote.query.filter_by(numero=numero_lote).first()
+        if not lote_obj:
+            lote_obj = Lote(numero=numero_lote)
+            db.session.add(lote_obj)
+            db.session.flush()
+
+        lectura.fecha = date.fromisoformat(f["fecha"])
+        lectura.hora = time.fromisoformat(f["hora"])
+        lectura.lote_rel = lote_obj
+        lectura.ph = float(f["ph"])
+        lectura.tds = int(f["tds"])
+        lectura.sabor = "sabor" in f
+        lectura.olor = "olor" in f
+        lectura.color = "color" in f
+        lectura.sello = "sello" in f
+        lectura.tecnico = f["tecnico"].strip()
+        lectura.observaciones = f["observaciones"].strip()
+ 
+        db.session.commit()
+        flash(f"Los cambios de la lectura #{lectura.id} se guardaron correctamente.", "ok")
+        return redirect(url_for("listar_lecturas"))
+    return render_template("editar.html", l=lectura, titulo=f"Editar lectura #{lectura.id}")
 
 
 # -------------------------------------------------------------

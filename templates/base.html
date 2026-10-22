@@ -20,6 +20,12 @@
   </header>
 
   <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, texto in mensajes %}
+        <div class="mensaje {{ categoria }}">{{ texto }}</div>
+      {% endfor %}
+    {% endwith %}
+    
     {% block contenido %}{% endblock %}
   </main>
 
