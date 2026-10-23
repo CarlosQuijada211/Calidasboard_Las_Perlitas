@@ -41,3 +41,52 @@ footer { text-align: center; color: #9aa3b2; font-size: 12px; padding: 24px; }
 #filtrar-boton {
     margin-left: 10px;
 }
+h2 { font-size: 18px; margin: 28px 0 12px; }
+ 
+/* Alertas (mismos tonos que "Cumple" / "No cumple") */
+.mensaje-ok { background: #e6faf6; border: 1px solid #00705c; color: #00705c; border-radius: 8px;
+              padding: 10px 12px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+.mensaje-error { background: #ffecec; border: 1px solid #E5484D; color: #a52a2e; border-radius: 8px;
+                 padding: 10px 12px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+ 
+/* Select del formulario con el mismo estilo que los inputs */
+.formulario select { padding: 9px 12px; border: 1.5px solid #e4e8f0; border-radius: 8px;
+                     font-size: 14px; font-family: inherit; background: #fff; }
+ 
+/* Etiquetas de rol */
+.etiqueta.rol-admin { background: #0A66FF; color: #fff; }
+.etiqueta.rol-supervisor { background: #E8A800; color: #3a2900; }
+.etiqueta.rol-tecnico { background: #e6faf6; color: #00705c; }
+ 
+/* Botón "Salir" dentro de la barra */
+.form-salir { display: inline; margin-left: 16px; }
+.form-salir button { background: transparent; border: 1.5px solid rgba(255,255,255,.6); padding: 6px 12px; }
+td form { margin: 0; }
+ h2 { font-size: 18px; margin: 28px 0 12px; }
+ 
+/* Alertas (mismos tonos que "Cumple" / "No cumple") */
+.mensaje-ok { background: #e6faf6; border: 1px solid #00705c; color: #00705c; border-radius: 8px;
+              padding: 10px 12px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+.mensaje-error { background: #ffecec; border: 1px solid #E5484D; color: #a52a2e; border-radius: 8px;
+                 padding: 10px 12px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+ 
+/* Estado de aprobación de una lectura */
+.etiqueta.aprobada { background: #e6faf6; color: #00705c; }
+.etiqueta.pendiente { background: #fff4d6; color: #8a5a00; }
+.etiqueta.rechazada { background: #E5484D; color: #fff; }
+ 
+/* Etiquetas de rol */
+.etiqueta.rol-admin { background: #0A66FF; color: #fff; }
+.etiqueta.rol-supervisor { background: #E8A800; color: #3a2900; }
+.etiqueta.rol-tecnico { background: #e6faf6; color: #00705c; }
+ 
+/* Select del formulario con el mismo estilo que los inputs */
+.formulario select { padding: 9px 12px; border: 1.5px solid #e4e8f0; border-radius: 8px;
+                     font-size: 14px; font-family: inherit; background: #fff; }
+ 
+/* Barra: nombre del usuario y botón Salir */
+.usuario-actual { color: #fff; font-size: 13px; opacity: .9; margin-left: 16px; }
+.form-salir { display: inline; margin-left: 16px; }
+.form-salir button { background: transparent; border: 1.5px solid rgba(255,255,255,.6); padding: 6px 12px; }
+td form { margin: 0; }
+ 

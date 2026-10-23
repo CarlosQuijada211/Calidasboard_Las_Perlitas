@@ -13,11 +13,26 @@
       <a href="{{ url_for('listar_lecturas') }}">Lecturas</a>
       <a href="{{ url_for('ver_alertas') }}">Alertas</a>
       <a href="{{ url_for('resumen') }}">Resumen</a>
-      <a href="{{ url_for('nueva_lectura') }}" class="boton">+ Nueva lectura</a>  
+      {# Paso 4: aquí irá el enlace a "Pendientes" (solo supervisor y admin) #}
+      {% if usuario_actual and usuario_actual.rol == 'admin' %}
+        <a href="{{ url_for('listar_usuarios') }}">Usuarios</a>
+      {% endif %}
+      <a class="boton" href="{{ url_for('nueva_lectura') }}">+ Nueva lectura</a>
+      {% if usuario_actual %}
+        <span class="usuario-actual">{{ usuario_actual.nombre }} · {{ ETIQUETAS_ROL[usuario_actual.rol] }}</span>
+      {% endif %}
+      <form method="post" action="{{ url_for('logout') }}" class="form-salir">
+        <button type="submit">Salir</button>
+      </form>
     </nav>
   </header>
 
   <main>
+    {# Alertas de todas las páginas: bienvenida, "sin permiso", lectura enviada, etc. #}
+    {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
+      <div class="{{ 'mensaje-error' if categoria == 'error' else 'mensaje-ok' }}" role="alert">{{ mensaje }}</div>
+    {% endfor %}
+
     {% block contenido %}{% endblock %}
   </main>
 
