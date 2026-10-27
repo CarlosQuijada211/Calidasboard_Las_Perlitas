@@ -13,10 +13,20 @@
       <a href="{{ url_for('listar_lecturas') }}">Lecturas</a>
       <a href="{{ url_for('ver_alertas') }}">Alertas</a>
       <a href="{{ url_for('resumen') }}">Resumen</a>
-      {# Paso 4: aquí irá el enlace a "Pendientes" (solo supervisor y admin) #}
+
+      {% if usuario_actual and usuario_actual.rol in ['admin', 'supervisor'] %}
+        <a href="{{ url_for('listar_pendientes') }}">Pendientes</a>
+      {% endif %}
+
       {% if usuario_actual and usuario_actual.rol == 'admin' %}
         <a href="{{ url_for('listar_usuarios') }}">Usuarios</a>
       {% endif %}
+      
+      {% if usuario_actual and usuario_actual.rol in ['admin', 'supervisor'] %}
+        <a href="{{ url_for('listar_pendientes') }}">Pendientes</a>
+        <a href="{{ url_for('listar_rechazadas') }}">Rechazadas</a>
+      {% endif %}
+
       <a class="boton" href="{{ url_for('nueva_lectura') }}">+ Nueva lectura</a>
       {% if usuario_actual %}
         <span class="usuario-actual">{{ usuario_actual.nombre }} · {{ ETIQUETAS_ROL[usuario_actual.rol] }}</span>

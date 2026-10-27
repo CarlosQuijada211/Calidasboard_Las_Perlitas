@@ -70,7 +70,7 @@ class Lectura(db.Model):
     tecnico = db.Column(db.String(100), nullable=False)
 
     # --- Aprobación ---
-    estado = db.Column(db.String(15), nullable=False, default="aprobada")
+    estado = db.Column(db.String(15), nullable=False, default="pendiente")
     creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"))
     revisado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"))
     fecha_revision = db.Column(db.DateTime)
@@ -124,18 +124,22 @@ ADMIN_Y_SUPERVISOR = {"admin", "supervisor"}     # se usará en el Paso 4 (aprob
 SOLO_ADMIN = {"admin"}
 
 PERMISOS = {
-    "inicio":           TODOS,
-    "logout":           TODOS,
-    "listar_lecturas":  TODOS,
-    "buscar_lecturas":  TODOS,
-    "nueva_lectura":    TODOS,
-    "observar":         TODOS,          # revisa puede_editar() por dentro
-    "ver_alertas":      TODOS,          # solo lectura, y solo cuenta lecturas aprobadas
-    "resumen":          TODOS,          # solo lectura, y solo cuenta lecturas aprobadas
-    "borrar":           SOLO_ADMIN,
-    "listar_usuarios":  SOLO_ADMIN,
-    "crear_usuario":    SOLO_ADMIN,
-    "eliminar_usuario": SOLO_ADMIN,
+    "inicio":             TODOS,
+    "logout":             TODOS,
+    "listar_lecturas":    TODOS,
+    "buscar_lecturas":    TODOS,
+    "nueva_lectura":      TODOS,
+    "observar":           TODOS,          
+    "ver_alertas":        TODOS,          
+    "resumen":            TODOS,          
+    "listar_pendientes":  ADMIN_Y_SUPERVISOR,  # <-- Nuevo
+    "listar_rechazadas":  ADMIN_Y_SUPERVISOR,
+    "aprobar_lectura":    ADMIN_Y_SUPERVISOR,  
+    "rechazar_lectura":   ADMIN_Y_SUPERVISOR,  
+    "borrar":             SOLO_ADMIN,
+    "listar_usuarios":    SOLO_ADMIN,
+    "crear_usuario":      SOLO_ADMIN,
+    "eliminar_usuario":   SOLO_ADMIN,
 }
 
 RUTAS_PUBLICAS = {"login", "static"}
@@ -258,8 +262,9 @@ def inicio():
 @app.route("/lecturas")
 def listar_lecturas():
     lecturas = (lecturas_visibles()
-                .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
-                .all())
+                 .filter(Lectura.estado != "rechazada")  # <-- Oculta las rechazadas aquí
+                 .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
+                 .all())
     return render_template("lecturas.html", lecturas=lecturas, titulo="Todas las lecturas")
 
 
@@ -277,17 +282,19 @@ def nueva_lectura():
             db.session.flush()
 
         nueva = Lectura(
-            fecha=date.fromisoformat(f["fecha"]),      # "2026-09-11" -> fecha
-            hora=time.fromisoformat(f["hora"]),        # "08:30" -> hora
+            fecha=date.fromisoformat(f["fecha"]),
+            hora=time.fromisoformat(f["hora"]),
             lote_rel=lote_obj,
-            ph=float(f["ph"]),                         # texto -> decimal
-            tds=int(f["tds"]),                         # texto -> entero
-            sabor="sabor" in f,                        # casilla marcada = True
+            ph=float(f["ph"]),
+            tds=int(f["tds"]),
+            sabor="sabor" in f,
             olor="olor" in f,
             color="color" in f,
             sello="sello" in f,
             tecnico=f["tecnico"].strip(),
             observaciones=f["observaciones"].strip(),
+            creado_por_id=g.usuario.id,  # <-- Vinculamos la lectura al usuario logueado
+            estado="pendiente",            # <-- Nace como pendiente de aprobación
         )
         db.session.add(nueva)
         db.session.commit()
@@ -300,19 +307,25 @@ def buscar_lecturas():
     lote = request.args.get("lote", "").strip()
     tecnico = request.args.get("tecnico", "").strip()
 
-    query = lecturas_visibles()
+    query = lecturas_visibles().filter(Lectura.estado != "rechazada")  # <-- Y aquí también
 
     if lote:
         query = query.join(Lote).filter(Lote.numero == lote)
 
     if tecnico:
-        # filter(...) en vez de filter_by(...): después de un join, filter_by apunta a la
-        # última tabla unida (Lote) y fallaba al llenar lote y técnico a la vez.
         query = query.filter(Lectura.tecnico == tecnico)
 
     lecturas = query.order_by(Lectura.fecha.desc(), Lectura.hora.desc()).all()
     return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Filtradas")
 
+@app.route("/lecturas/rechazadas")
+def listar_rechazadas():
+    if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
+        abort(403)
+    lecturas = (Lectura.query.filter_by(estado="rechazada")
+                .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
+                .all())
+    return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Rechazadas")
 
 @app.route("/alertas")
 def ver_alertas():
@@ -339,6 +352,56 @@ def observar(id):
     # request.referrer = la página desde donde se envió el formulario
     return redirect(request.referrer or url_for("listar_lecturas"))
 
+@app.route("/lecturas/<int:id>/aprobar", methods=["POST"])
+def aprobar_lectura(id):
+    lectura = db.session.get(Lectura, id)
+    if lectura is None or not puede_ver(lectura):
+        return "Lectura no encontrada", 404
+    
+    if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
+        abort(403)
+
+    lectura.estado = "aprobada"
+    lectura.revisado_por_id = g.usuario.id
+    lectura.fecha_revision = datetime.now()
+    lectura.motivo_rechazo = None  # Limpiamos si antes fue rechazada
+    db.session.commit()
+
+    flash(f"Lectura del lote {lectura.lote_rel.numero} aprobada exitosamente.", "success") # type: ignore
+    return redirect(request.referrer or url_for("listar_lecturas"))
+
+
+@app.route("/lecturas/<int:id>/rechazar", methods=["POST"])
+def rechazar_lectura(id):
+    lectura = db.session.get(Lectura, id)
+    if lectura is None or not puede_ver(lectura):
+        return "Lectura no encontrada", 404
+    
+    if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
+        abort(403)
+
+    motivo = request.form.get("motivo_rechazo", "").strip()
+    if not motivo:
+        flash("Debes especificar un motivo de rechazo.", "error")
+        return redirect(request.referrer or url_for("listar_lecturas"))
+
+    lectura.estado = "rechazada"
+    lectura.revisado_por_id = g.usuario.id
+    lectura.fecha_revision = datetime.now()
+    lectura.motivo_rechazo = motivo
+    db.session.commit()
+
+    flash(f"Lectura del lote {lectura.lote_rel.numero} rechazada.", "warning") # type: ignore
+    return redirect(request.referrer or url_for("listar_lecturas"))
+
+@app.route("/lecturas/pendientes")
+def listar_pendientes():
+    if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
+        abort(403)
+    lecturas = (Lectura.query.filter_by(estado="pendiente")
+                .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
+                .all())
+    return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Pendientes de Aprobación")
 
 @app.route("/resumen")
 def resumen():
