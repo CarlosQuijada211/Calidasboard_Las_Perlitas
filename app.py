@@ -7,6 +7,7 @@ from datetime import date, time
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+import os
 
 from dashboard_data import obtener_registros, obtener_lotes, construir_dashboard
 
@@ -18,7 +19,10 @@ app.secret_key = "esto-seria-mejor-guardarlo-en-una-variable-de-entorno"
 #    XAMPP trae el usuario "root" con contraseña vacía (root:@).
 #    Si tu MySQL tiene contraseña, escríbela después de "root:".
 # -------------------------------------------------------------
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:amesame13!@localhost:3306/calidashboard_db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL",
+    "mysql+pymysql://root:renovacionSQL59@localhost:3306/calidashboard_db",
+)
 
 db = SQLAlchemy(app)
 
