@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block titulo %}Calidashboard{% endblock %} · Calidashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+  {% block head%} {% endblock %}
 </head>
 <body>
   <header class="barra">
@@ -13,6 +14,8 @@
       <a href="{{ url_for('listar_lecturas') }}">Lecturas</a>
       <a href="{{ url_for('ver_alertas') }}">Alertas</a>
       <a href="{{ url_for('resumen') }}">Resumen</a>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('nueva_lectura') }}" class="boton">+ Nueva lectura</a>  
 
       {% if usuario_actual and usuario_actual.rol in ['admin', 'supervisor'] %}
         <a href="{{ url_for('listar_pendientes') }}">Pendientes</a>
@@ -38,11 +41,12 @@
   </header>
 
   <main>
-    {# Alertas de todas las páginas: bienvenida, "sin permiso", lectura enviada, etc. #}
-    {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
-      <div class="{{ 'mensaje-error' if categoria == 'error' else 'mensaje-ok' }}" role="alert">{{ mensaje }}</div>
-    {% endfor %}
-
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, texto in mensajes %}
+        <div class="mensaje {{ categoria }}">{{ texto }}</div>
+      {% endfor %}
+    {% endwith %}
+    
     {% block contenido %}{% endblock %}
   </main>
 

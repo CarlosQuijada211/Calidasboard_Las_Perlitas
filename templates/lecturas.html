@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block titulo %}{{ titulo }}{% endblock %}
 
+{% block head%} 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+
 {% block contenido %}
 {% set es_admin = usuario_actual.rol == 'admin' %}
 {% set es_supervisor_o_admin = usuario_actual.rol in ['admin', 'supervisor'] %}

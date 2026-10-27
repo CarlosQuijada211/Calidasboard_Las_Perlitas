@@ -6,7 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__)
+from dashboard_data import obtener_registros, obtener_lotes, construir_dashboard
 
 # Configuración de la Base de Datos
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -450,6 +450,16 @@ def borrar(id):
     # request.referrer = la página desde donde se envió el formulario
     return redirect(request.referrer or url_for("listar_lecturas"))
 
+@app.route("/dashboard")
+def dashboard():
+    registros = obtener_registros(Lectura, Lote)
+    lotes = obtener_lotes(Lote)
+    datos = construir_dashboard(registros, lotes, PH_MIN, PH_MAX, TDS_MAX)
+    return render_template("dashboard.html", d=datos, titulo="Dashboard")
+
+@app.route("/lecturas/<int:id>/editar", methods=["GET", "POST"])
+def editar(id):
+    lectura = Lectura.query.get_or_404(id)
 
 # -------------------------------------------------------------
 # 8. RUTAS · ADMINISTRACIÓN DE USUARIOS (solo admin)
