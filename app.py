@@ -1,6 +1,7 @@
 import os
 from datetime import date, time, datetime, timedelta
-
+import re 
+from sqlalchemy.orm import validates  
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
@@ -48,7 +49,12 @@ class Lote(db.Model):
     numero = db.Column(db.String(8), unique=True, nullable=False)
 
     lecturas = db.relationship("Lectura", backref="lote_rel", lazy=True)
-
+    @validates("numero")
+    def validar_numero(self, key, valor):
+        valor = valor.strip()
+        if not re.fullmatch(r"\d{5}-\d{2}", valor):
+            raise ValueError("El lote debe tener el formato XXXXX-XX (ej. 12345-01).")
+        return valor
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -80,7 +86,32 @@ class Lectura(db.Model):
 
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     revisado_por = db.relationship("Usuario", foreign_keys=[revisado_por_id])
+    @validates("fecha")
+    def validar_fecha(self, key, valor):
+        if valor > date.today():
+            raise ValueError("La fecha no puede ser futura.")
+        return valor
 
+    @validates("ph")
+    def validar_ph(self, key, valor):
+        if not 0 <= valor <= 14:
+            raise ValueError("El pH debe estar entre 0 y 14.")
+        return round(valor, 2)
+
+    @validates("tds")
+    def validar_tds(self, key, valor):
+        if not 0 <= valor <= 999:
+            raise ValueError("El TDS debe estar entre 0 y 999.")
+        return valor
+
+    @validates("tecnico")
+    def validar_tecnico(self, key, valor):
+        valor = valor.strip()
+        if valor == "":
+            raise ValueError("El nombre del técnico es obligatorio.")
+        if len(valor) > 100:
+            raise ValueError("El nombre del técnico no puede pasar de 100 caracteres.")
+        return valor
     # --- Funciones del modelo: cada una responde una pregunta ---
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -172,7 +203,11 @@ def prohibido(e):
     flash("No tienes permiso para entrar a esa página.", "error")
     return redirect(request.referrer or url_for("listar_lecturas"))
 
-
+@app.errorhandler(ValueError)
+def error_de_validacion(e):
+    db.session.rollback()
+    flash(str(e), "error")
+    return redirect(request.referrer or url_for("listar_lecturas"))
 # Disponible en todas las plantillas: {{ usuario_actual.nombre }}, {{ usuario_actual.rol }}
 @app.context_processor
 def inyectar_usuario():
