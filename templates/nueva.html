@@ -2,7 +2,12 @@
 {% block titulo %}Nueva lectura{% endblock %}
 
 {% block contenido %}
+{% set es_tecnico = usuario_actual.rol == 'tecnico' %}
 <h1>Registrar nueva lectura</h1>
+
+{% if es_tecnico %}
+<p class="nota">Tu lectura quedará <b>pendiente de aprobación</b> hasta que un supervisor la revise.</p>
+{% endif %}
 
 <form method="post" class="formulario">
   <label>Fecha
@@ -22,7 +27,12 @@
     <input name="tds" type="number" min="0" max="999" required>
   </label>
   <label>Técnico
-    <input name="tecnico" maxlength="100" required>
+    {% if es_tecnico %}
+      {# Fijo: el servidor también usa siempre el nombre del usuario que inició sesión #}
+      <input name="tecnico" value="{{ usuario_actual.nombre }}" maxlength="100" readonly>
+    {% else %}
+      <input name="tecnico" maxlength="100" placeholder="Vacío = tu nombre">
+    {% endif %}
   </label>
 
   <fieldset>
@@ -38,7 +48,7 @@
   </label>
 
   <div class="acciones">
-    <button class="boton">Guardar lectura</button>
+    <button class="boton">{{ 'Enviar para aprobación' if es_tecnico else 'Guardar lectura' }}</button>
     <a href="{{ url_for('listar_lecturas') }}">Cancelar</a>
   </div>
 </form>

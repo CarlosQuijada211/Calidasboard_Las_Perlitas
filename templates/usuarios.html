@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios{% endblock %}
+ 
+{% block contenido %}
+<h1>Usuarios</h1>
+<p class="nota">{{ usuarios|length }} usuario(s) · Solo los administradores pueden agregar o eliminar cuentas.</p>
+ 
+{# Los avisos de éxito (flash) ya los muestra base.html; aquí solo el error del formulario #}
+{% if error %}
+  <div class="mensaje-error" role="alert">{{ error }}</div>
+{% endif %}
+ 
+<form class="formulario" method="post" action="{{ url_for('crear_usuario') }}">
+  <label>
+    Nombre completo
+    <input type="text" name="nombre" value="{{ datos.get('nombre', '') }}" placeholder="Ej. Sofía Ramírez" required>
+  </label>
+  <label>
+    Usuario
+    <input type="text" name="usuario" value="{{ datos.get('usuario', '') }}" placeholder="Ej. sramirez" minlength="3" required>
+  </label>
+  <label>
+    Correo electrónico
+    <input type="email" name="correo" value="{{ datos.get('correo', '') }}" placeholder="nombre@empresa.com" required>
+  </label>
+  <label>
+    Contraseña
+    <input type="password" name="contrasena" autocomplete="new-password" minlength="8" required>
+  </label>
+  <label>
+    Rol
+    <select name="rol" required>
+      {% for r in roles %}
+        <option value="{{ r }}" {{ 'selected' if datos.get('rol', 'tecnico') == r }}>{{ ETIQUETAS_ROL[r] }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <div class="acciones">
+    <button type="submit">Agregar usuario</button>
+  </div>
+</form>
+ 
+<h2>Usuarios existentes</h2>
+<div class="tabla-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Nombre</th><th>Usuario</th><th>Correo</th><th>Rol</th><th>Creado</th><th>Eliminar</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.nombre }}</td>
+        <td>{{ u.usuario }}</td>
+        <td>{{ u.correo }}</td>
+        <td><span class="etiqueta rol-{{ u.rol }}">{{ ETIQUETAS_ROL[u.rol] }}</span></td>
+        <td>{{ u.creado.strftime('%Y-%m-%d') if u.creado else '' }}</td>
+        <td>
+          {% if u.id == usuario_actual.id %}
+            <span class="nota">Tu cuenta</span>
+          {% else %}
+            <form method="post" action="{{ url_for('eliminar_usuario', id=u.id) }}">
+              <button type="submit" class="eliminar"
+                      onclick="return confirm('¿Eliminar al usuario {{ u.usuario }}? Esta acción no se puede deshacer.')">Eliminar</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
