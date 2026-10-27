@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{{ titulo }}{% endblock %}
 
-{% block head%} 
+{% block head %} 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 {% endblock %}
 
@@ -15,9 +15,9 @@
 <form id="filtrar" action="{{ url_for('buscar_lecturas') }}" method="GET">
   <label class="nota">Lote (XXXXX-XX)
     <input name="lote"
-       placeholder="25254-01"
-       pattern="\s*[0-9]{5}\s*-\s*[0-9]{2}\s*"
-       title="5 dígitos, un guion y 2 dígitos. Ej: 25254-01">
+           placeholder="25254-01"
+           pattern="\s*[0-9]{5}\s*-\s*[0-9]{2}\s*"
+           title="5 dígitos, un guion y 2 dígitos. Ej: 25254-01">
   </label>
   <label class="nota">Técnico
     <input name="tecnico" maxlength="100">
@@ -45,6 +45,7 @@
     <th>Estado</th>
     <th style="min-width: 230px;">Aprobación</th>
     <th style="min-width: 220px;">Observaciones</th>
+    <th>Editar</th>
     {% if es_admin %}<th>Eliminar</th>{% endif %}
   </tr>
   {% for l in lecturas %}
@@ -65,7 +66,7 @@
       {% else %}<span class="etiqueta no">No cumple</span>{% endif %}
     </td>
     
-    <!-- Columna de Aprobación con ajuste de texto y controles limpios -->
+    <!-- Columna de Aprobación -->
     <td style="white-space: normal; word-break: break-word; vertical-align: middle;">
       <div style="margin-bottom: 4px;">
         <span class="etiqueta {{ l.estado }}">{{ l.estado|capitalize }}</span>
@@ -90,7 +91,7 @@
       {% endif %}
     </td>
 
-    <!-- Columna de Observaciones con ajuste de texto -->
+    <!-- Columna de Observaciones -->
     <td style="white-space: normal; vertical-align: middle;">
       {% if puede_editar(l) %}
       <form id="observaciones-{{ l.id }}" method="post" action="{{ url_for('observar', id=l.id) }}" class="form-linea">
@@ -102,6 +103,16 @@
       {% endif %}
     </td>
 
+    <!-- Columna de Editar -->
+    <td style="vertical-align: middle;">
+      {% if puede_editar(l) %}
+        <a href="{{ url_for('editar', id=l.id) }}" style="display: inline-block; padding: 5px 10px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-size: 12px;">Editar</a>
+      {% else %}
+        —
+      {% endif %}
+    </td>
+
+    <!-- Columna de Eliminar (Solo Admin) -->
     {% if es_admin %}
     <td style="vertical-align: middle;">
       <form id="eliminar-{{ l.id }}" method="post" action="{{ url_for('borrar', id=l.id) }}" class="form-linea">

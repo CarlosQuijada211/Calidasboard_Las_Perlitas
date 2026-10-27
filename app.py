@@ -6,7 +6,10 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Importaciones para el módulo de dashboard
 from dashboard_data import obtener_registros, obtener_lotes, construir_dashboard
+
+app = Flask(__name__)
 
 # Configuración de la Base de Datos
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -22,7 +25,6 @@ app.permanent_session_lifetime = timedelta(days=14)   # duración de "Mantener s
 db = SQLAlchemy(app)
 
 # LÍMITES DE CALIDAD (valores ilustrativos para practicar)
-# Cámbialos por los límites de especificación de la planta.
 PH_MIN = 6.5
 PH_MAX = 8.5
 TDS_MAX = 500
@@ -32,7 +34,7 @@ app.jinja_env.globals.update(PH_MIN=PH_MIN, PH_MAX=PH_MAX, TDS_MAX=TDS_MAX)
 
 
 # Roles y estados globales
-ROLES = ("admin", "supervisor", "tecnico")          # en la BD "tecnico" va sin acento
+ROLES = ("admin", "supervisor", "tecnico")           # en la BD "tecnico" va sin acento
 ESTADOS = ("pendiente", "aprobada", "rechazada")
 ETIQUETAS_ROL = {"admin": "Administrador", "supervisor": "Supervisor", "tecnico": "Técnico"}
 app.jinja_env.globals.update(ETIQUETAS_ROL=ETIQUETAS_ROL)
@@ -120,26 +122,28 @@ class Usuario(db.Model):
 # Permisos por rol
 
 TODOS = {"admin", "supervisor", "tecnico"}
-ADMIN_Y_SUPERVISOR = {"admin", "supervisor"}     # se usará en el Paso 4 (aprobar / rechazar)
+ADMIN_Y_SUPERVISOR = {"admin", "supervisor"}    # se usará en el Paso 4 (aprobar / rechazar)
 SOLO_ADMIN = {"admin"}
 
 PERMISOS = {
-    "inicio":             TODOS,
-    "logout":             TODOS,
-    "listar_lecturas":    TODOS,
-    "buscar_lecturas":    TODOS,
-    "nueva_lectura":      TODOS,
-    "observar":           TODOS,          
-    "ver_alertas":        TODOS,          
-    "resumen":            TODOS,          
-    "listar_pendientes":  ADMIN_Y_SUPERVISOR,  # <-- Nuevo
-    "listar_rechazadas":  ADMIN_Y_SUPERVISOR,
-    "aprobar_lectura":    ADMIN_Y_SUPERVISOR,  
-    "rechazar_lectura":   ADMIN_Y_SUPERVISOR,  
-    "borrar":             SOLO_ADMIN,
-    "listar_usuarios":    SOLO_ADMIN,
-    "crear_usuario":      SOLO_ADMIN,
-    "eliminar_usuario":   SOLO_ADMIN,
+    "inicio":               TODOS,
+    "logout":               TODOS,
+    "listar_lecturas":      TODOS,
+    "buscar_lecturas":      TODOS,
+    "nueva_lectura":        TODOS,
+    "observar":             TODOS,          
+    "ver_alertas":          TODOS,          
+    "resumen":              TODOS,          
+    "dashboard":            TODOS,          # <-- Añadido
+    "editar":               ADMIN_Y_SUPERVISOR,          # <-- Añadido (controlado por puede_editar internamente)
+    "listar_pendientes":    ADMIN_Y_SUPERVISOR,  
+    "listar_rechazadas":    ADMIN_Y_SUPERVISOR,
+    "aprobar_lectura":      ADMIN_Y_SUPERVISOR,  
+    "rechazar_lectura":     ADMIN_Y_SUPERVISOR,  
+    "borrar":               SOLO_ADMIN,
+    "listar_usuarios":      SOLO_ADMIN,
+    "crear_usuario":        SOLO_ADMIN,
+    "eliminar_usuario":     SOLO_ADMIN,
 }
 
 RUTAS_PUBLICAS = {"login", "static"}
@@ -147,8 +151,7 @@ RUTAS_PUBLICAS = {"login", "static"}
 
 @app.before_request
 def controlar_acceso():
-    # Se consulta el usuario en la BD en cada petición: si un admin lo elimina,
-    # pierde el acceso de inmediato y si le cambian el rol, se aplica al instante.
+    # Se consulta el usuario en la BD en cada petición
     uid = session.get("usuario_id")
     g.usuario = db.session.get(Usuario, uid) if uid else None
 
@@ -184,12 +187,10 @@ def destino_seguro(destino):
 
 
 # -------------------------------------------------------------
-# 5. VISIBILIDAD DE LECTURAS (Paso 2)
+# VISIBILIDAD DE LECTURAS
 # -------------------------------------------------------------
 def lecturas_visibles():
-    """Consulta base con las lecturas que el usuario actual puede ver.
-    - admin y supervisor: todas
-    - técnico: las aprobadas + las suyas (pendientes o rechazadas)"""
+    """Consulta base con las lecturas que el usuario actual puede ver."""
     consulta = Lectura.query
     if g.usuario.rol == "tecnico":
         consulta = consulta.filter(
@@ -211,12 +212,12 @@ def puede_editar(lectura):
     return lectura.creado_por_id == g.usuario.id
 
 
-# Permite usar {% if puede_editar(l) %} dentro de las plantillas (lo usaremos en el Paso 7)
+# Permite usar funciones dentro de las plantillas Jinja
 app.jinja_env.globals.update(puede_ver=puede_ver, puede_editar=puede_editar)
 
 
 # -------------------------------------------------------------
-# 6. RUTAS · SESIÓN
+# RUTAS · SESIÓN
 # -------------------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -230,7 +231,6 @@ def login():
 
         user = Usuario.query.filter_by(usuario=usuario).first()
 
-        # Mismo mensaje si falla el usuario o la contraseña (no revela cuál fue)
         if user is None or not user.revisar_password(contrasena):
             return render_template("login.html", error="Usuario o contraseña incorrectos.",
                                    datos=f, next=f.get("next"))
@@ -252,7 +252,7 @@ def logout():
 
 
 # -------------------------------------------------------------
-# 7. RUTAS · LECTURAS
+# RUTAS · LECTURAS
 # -------------------------------------------------------------
 @app.route("/")
 def inicio():
@@ -262,7 +262,7 @@ def inicio():
 @app.route("/lecturas")
 def listar_lecturas():
     lecturas = (lecturas_visibles()
-                 .filter(Lectura.estado != "rechazada")  # <-- Oculta las rechazadas aquí
+                 .filter(Lectura.estado != "rechazada")  # Oculta las rechazadas aquí
                  .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
                  .all())
     return render_template("lecturas.html", lecturas=lecturas, titulo="Todas las lecturas")
@@ -293,8 +293,8 @@ def nueva_lectura():
             sello="sello" in f,
             tecnico=f["tecnico"].strip(),
             observaciones=f["observaciones"].strip(),
-            creado_por_id=g.usuario.id,  # <-- Vinculamos la lectura al usuario logueado
-            estado="pendiente",            # <-- Nace como pendiente de aprobación
+            creado_por_id=g.usuario.id,  # Vinculamos la lectura al usuario logueado
+            estado="pendiente",            # Nace como pendiente de aprobación
         )
         db.session.add(nueva)
         db.session.commit()
@@ -307,7 +307,7 @@ def buscar_lecturas():
     lote = request.args.get("lote", "").strip()
     tecnico = request.args.get("tecnico", "").strip()
 
-    query = lecturas_visibles().filter(Lectura.estado != "rechazada")  # <-- Y aquí también
+    query = lecturas_visibles().filter(Lectura.estado != "rechazada")
 
     if lote:
         query = query.join(Lote).filter(Lote.numero == lote)
@@ -318,6 +318,7 @@ def buscar_lecturas():
     lecturas = query.order_by(Lectura.fecha.desc(), Lectura.hora.desc()).all()
     return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Filtradas")
 
+
 @app.route("/lecturas/rechazadas")
 def listar_rechazadas():
     if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
@@ -327,9 +328,10 @@ def listar_rechazadas():
                 .all())
     return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Rechazadas")
 
+
 @app.route("/alertas")
 def ver_alertas():
-    # Solo lecturas aprobadas: una lectura pendiente aún no es un dato oficial
+    # Solo lecturas aprobadas
     todas = (Lectura.query.filter_by(estado="aprobada")
              .order_by(Lectura.fecha, Lectura.hora).all())
     alertas = [l for l in todas if not l.cumple()]
@@ -339,7 +341,6 @@ def ver_alertas():
 @app.route("/lecturas/<int:id>/observar", methods=["POST"])
 def observar(id):
     lectura = db.session.get(Lectura, id)
-    # 404 (y no 403) si no la puede ver: así no se revela que existe
     if lectura is None or not puede_ver(lectura):
         return "Lectura no encontrada", 404
     if not puede_editar(lectura):
@@ -349,8 +350,8 @@ def observar(id):
     if texto != "":
         lectura.observaciones = texto
         db.session.commit()
-    # request.referrer = la página desde donde se envió el formulario
     return redirect(request.referrer or url_for("listar_lecturas"))
+
 
 @app.route("/lecturas/<int:id>/aprobar", methods=["POST"])
 def aprobar_lectura(id):
@@ -364,10 +365,10 @@ def aprobar_lectura(id):
     lectura.estado = "aprobada"
     lectura.revisado_por_id = g.usuario.id
     lectura.fecha_revision = datetime.now()
-    lectura.motivo_rechazo = None  # Limpiamos si antes fue rechazada
+    lectura.motivo_rechazo = None
     db.session.commit()
 
-    flash(f"Lectura del lote {lectura.lote_rel.numero} aprobada exitosamente.", "success") # type: ignore
+    flash(f"Lectura del lote {lectura.lote_rel.numero} aprobada exitosamente.", "success")
     return redirect(request.referrer or url_for("listar_lecturas"))
 
 
@@ -391,8 +392,9 @@ def rechazar_lectura(id):
     lectura.motivo_rechazo = motivo
     db.session.commit()
 
-    flash(f"Lectura del lote {lectura.lote_rel.numero} rechazada.", "warning") # type: ignore
+    flash(f"Lectura del lote {lectura.lote_rel.numero} rechazada.", "warning")
     return redirect(request.referrer or url_for("listar_lecturas"))
+
 
 @app.route("/lecturas/pendientes")
 def listar_pendientes():
@@ -403,53 +405,17 @@ def listar_pendientes():
                 .all())
     return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Pendientes de Aprobación")
 
-@app.route("/resumen")
-def resumen():
-    # Solo lecturas aprobadas
-    todas = (Lectura.query.filter_by(estado="aprobada")
-             .order_by(Lectura.fecha, Lectura.hora).all())
-
-    total = len(todas)
-
-    # Manejo de caso sin registros
-    if total == 0:
-        Datos = {
-            "TotalLecturas": 0,
-            "pHPromedio": "0.00",
-            "TDSPromedio": "0.00",
-            "LecturasCumplen": 0,
-            "Porcentaje": "0.00%"
-        }
-        return render_template("resumen.html", lecturas=Datos, titulo="Resumen de Lecturas")
-
-    ph_suma = sum(l.ph for l in todas)
-    tds_suma = sum(l.tds for l in todas)
-    cumplen = sum(1 for l in todas if l.cumple())
-
-    ph_promedio = ph_suma / total
-    tds_promedio = tds_suma / total
-    porcentaje = (cumplen / total) * 100
-
-    Datos = {
-        "TotalLecturas": total,
-        "pHPromedio": f"{ph_promedio:.2f}",
-        "TDSPromedio": f"{tds_promedio:.2f}",
-        "LecturasCumplen": cumplen,
-        "Porcentaje": f"{porcentaje:.2f}%"
-    }
-
-    return render_template("resumen.html", lecturas=Datos, titulo="Resumen de Lecturas")
-
-
 @app.route("/lecturas/<int:id>/borrar", methods=["POST"])
 def borrar(id):
     lectura = Lectura.query.get_or_404(id)
     db.session.delete(lectura)
     db.session.commit()
-
-    # request.referrer = la página desde donde se envió el formulario
     return redirect(request.referrer or url_for("listar_lecturas"))
 
+
+# -------------------------------------------------------------
+# NUEVAS RUTAS AÑADIDAS: DASHBOARD Y EDICIÓN
+# -------------------------------------------------------------
 @app.route("/dashboard")
 def dashboard():
     registros = obtener_registros(Lectura, Lote)
@@ -457,9 +423,42 @@ def dashboard():
     datos = construir_dashboard(registros, lotes, PH_MIN, PH_MAX, TDS_MAX)
     return render_template("dashboard.html", d=datos, titulo="Dashboard")
 
+
 @app.route("/lecturas/<int:id>/editar", methods=["GET", "POST"])
 def editar(id):
-    lectura = Lectura.query.get_or_404(id)
+    lectura = db.session.get(Lectura, id)
+    if lectura is None or not puede_ver(lectura):
+        return "Lectura no encontrada", 404
+    if not puede_editar(lectura):
+        abort(403)
+
+    if request.method == "POST":
+        f = request.form
+
+        numero_lote = f["lote"].strip()
+        lote_obj = Lote.query.filter_by(numero=numero_lote).first()
+        if not lote_obj:
+            lote_obj = Lote(numero=numero_lote)
+            db.session.add(lote_obj)
+            db.session.flush()
+
+        lectura.fecha = date.fromisoformat(f["fecha"])
+        lectura.hora = time.fromisoformat(f["hora"])
+        lectura.lote_rel = lote_obj
+        lectura.ph = float(f["ph"])
+        lectura.tds = int(f["tds"])
+        lectura.sabor = "sabor" in f
+        lectura.olor = "olor" in f
+        lectura.color = "color" in f
+        lectura.sello = "sello" in f
+        lectura.tecnico = f["tecnico"].strip()
+        lectura.observaciones = f["observaciones"].strip()
+ 
+        db.session.commit()
+        flash(f"Los cambios de la lectura #{lectura.id} se guardaron correctamente.", "success")
+        return redirect(url_for("listar_lecturas"))
+    return render_template("editar.html", l=lectura, titulo=f"Editar lectura #{lectura.id}")
+
 
 # -------------------------------------------------------------
 # 8. RUTAS · ADMINISTRACIÓN DE USUARIOS (solo admin)
@@ -524,9 +523,7 @@ def eliminar_usuario(id):
 
 
 # -------------------------------------------------------------
-# 9. ADMIN INICIAL (no hay registro público)
-#    Si no existe ningún admin, se crea uno al arrancar. CAMBIA estos valores
-#    definiendo las variables de entorno ADMIN_USER y ADMIN_PASSWORD.
+# 9. ADMIN INICIAL
 # -------------------------------------------------------------
 def crear_admin_inicial():
     if Usuario.query.filter_by(rol="admin").first():
@@ -546,6 +543,6 @@ def crear_admin_inicial():
 # -------------------------------------------------------------
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()          # crea las tablas que aún no existan
+        db.create_all()           # crea las tablas que aún no existan
         crear_admin_inicial()
     app.run(debug=True)

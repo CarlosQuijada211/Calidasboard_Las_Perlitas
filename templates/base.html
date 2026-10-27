@@ -13,13 +13,7 @@
     <nav>
       <a href="{{ url_for('listar_lecturas') }}">Lecturas</a>
       <a href="{{ url_for('ver_alertas') }}">Alertas</a>
-      <a href="{{ url_for('resumen') }}">Resumen</a>
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('nueva_lectura') }}" class="boton">+ Nueva lectura</a>  
-
-      {% if usuario_actual and usuario_actual.rol in ['admin', 'supervisor'] %}
-        <a href="{{ url_for('listar_pendientes') }}">Pendientes</a>
-      {% endif %}
 
       {% if usuario_actual and usuario_actual.rol == 'admin' %}
         <a href="{{ url_for('listar_usuarios') }}">Usuarios</a>
