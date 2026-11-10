@@ -1,10 +1,11 @@
 import os
+import re
 from datetime import date, time, datetime, timedelta
-import re 
-from sqlalchemy.orm import validates  
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
+from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Importaciones para el módulo de dashboard
@@ -40,6 +41,7 @@ ESTADOS = ("pendiente", "aprobada", "rechazada")
 ETIQUETAS_ROL = {"admin": "Administrador", "supervisor": "Supervisor", "tecnico": "Técnico"}
 app.jinja_env.globals.update(ETIQUETAS_ROL=ETIQUETAS_ROL)
 
+
 # Clases para tablas de la base de datos
 
 class Lote(db.Model):
@@ -49,12 +51,14 @@ class Lote(db.Model):
     numero = db.Column(db.String(8), unique=True, nullable=False)
 
     lecturas = db.relationship("Lectura", backref="lote_rel", lazy=True)
+
     @validates("numero")
     def validar_numero(self, key, valor):
         valor = valor.strip()
         if not re.fullmatch(r"\d{5}-\d{2}", valor):
             raise ValueError("El lote debe tener el formato XXXXX-XX (ej. 12345-01).")
         return valor
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -86,6 +90,8 @@ class Lectura(db.Model):
 
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     revisado_por = db.relationship("Usuario", foreign_keys=[revisado_por_id])
+
+    # --- Validaciones ---
     @validates("fecha")
     def validar_fecha(self, key, valor):
         if valor > date.today():
@@ -112,6 +118,7 @@ class Lectura(db.Model):
         if len(valor) > 100:
             raise ValueError("El nombre del técnico no puede pasar de 100 caracteres.")
         return valor
+
     # --- Funciones del modelo: cada una responde una pregunta ---
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -162,15 +169,15 @@ PERMISOS = {
     "listar_lecturas":      TODOS,
     "buscar_lecturas":      TODOS,
     "nueva_lectura":        TODOS,
-    "observar":             TODOS,          
-    "ver_alertas":          TODOS,          
-    "resumen":              TODOS,          
+    "observar":             TODOS,
+    "ver_alertas":          TODOS,
+    "resumen":              TODOS,
     "dashboard":            TODOS,          # <-- Añadido
     "editar":               ADMIN_Y_SUPERVISOR,          # <-- Añadido (controlado por puede_editar internamente)
-    "listar_pendientes":    ADMIN_Y_SUPERVISOR,  
+    "listar_pendientes":    ADMIN_Y_SUPERVISOR,
     "listar_rechazadas":    ADMIN_Y_SUPERVISOR,
-    "aprobar_lectura":      ADMIN_Y_SUPERVISOR,  
-    "rechazar_lectura":     ADMIN_Y_SUPERVISOR,  
+    "aprobar_lectura":      ADMIN_Y_SUPERVISOR,
+    "rechazar_lectura":     ADMIN_Y_SUPERVISOR,
     "borrar":               SOLO_ADMIN,
     "listar_usuarios":      SOLO_ADMIN,
     "crear_usuario":        SOLO_ADMIN,
@@ -203,11 +210,14 @@ def prohibido(e):
     flash("No tienes permiso para entrar a esa página.", "error")
     return redirect(request.referrer or url_for("listar_lecturas"))
 
+
 @app.errorhandler(ValueError)
 def error_de_validacion(e):
     db.session.rollback()
     flash(str(e), "error")
     return redirect(request.referrer or url_for("listar_lecturas"))
+
+
 # Disponible en todas las plantillas: {{ usuario_actual.nombre }}, {{ usuario_actual.rol }}
 @app.context_processor
 def inyectar_usuario():
@@ -393,7 +403,7 @@ def aprobar_lectura(id):
     lectura = db.session.get(Lectura, id)
     if lectura is None or not puede_ver(lectura):
         return "Lectura no encontrada", 404
-    
+
     if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
         abort(403)
 
@@ -412,7 +422,7 @@ def rechazar_lectura(id):
     lectura = db.session.get(Lectura, id)
     if lectura is None or not puede_ver(lectura):
         return "Lectura no encontrada", 404
-    
+
     if g.usuario.rol not in ADMIN_Y_SUPERVISOR:
         abort(403)
 
@@ -439,6 +449,7 @@ def listar_pendientes():
                 .order_by(Lectura.fecha.desc(), Lectura.hora.desc())
                 .all())
     return render_template("lecturas.html", lecturas=lecturas, titulo="Lecturas Pendientes de Aprobación")
+
 
 @app.route("/lecturas/<int:id>/borrar", methods=["POST"])
 def borrar(id):
@@ -488,7 +499,7 @@ def editar(id):
         lectura.sello = "sello" in f
         lectura.tecnico = f["tecnico"].strip()
         lectura.observaciones = f["observaciones"].strip()
- 
+
         db.session.commit()
         flash(f"Los cambios de la lectura #{lectura.id} se guardaron correctamente.", "success")
         return redirect(url_for("listar_lecturas"))
